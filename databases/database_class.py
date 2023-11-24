@@ -1,12 +1,17 @@
+import random
 import sqlite3
+import string
 import bcrypt
+from datetime import datetime
 
 
 class BerestaDatabase:
-
     _name = ""
     _con = ""
     _cur = ""
+
+    def id_generator(self, size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for _ in range(size))
 
     def __init__(self, name: str):
         self._name = name
@@ -33,9 +38,12 @@ class BerestaDatabase:
 
     def create_table(self):
         self._cur.execute("""CREATE TABLE IF NOT EXISTS users(
-           userlogin TEXT PRIMARY KEY,
-           password TEXT)
-        """)
+                   userLogin TEXT PRIMARY KEY,
+                   password TEXT,
+                   session TEXT,
+                   sessionCreated DATE
+                   )
+                """)
         self._con.commit()
         return
 
@@ -43,34 +51,45 @@ class BerestaDatabase:
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         return hashed_password.decode('utf-8')
 
-    def insert_user(self, userlogin: str, password: str):
-        user = (userlogin, self._hash_password(password))
-        query = "SELECT * FROM users WHERE userlogin = ?"
-        print(self.in_db(userlogin))
-        print(self._cur.execute(query, (userlogin, )).fetchone())
-        query = "INSERT INTO users VALUES(?, ?);"
-        if not self.in_db(userlogin):
+    def insert_user(self, user_login: str, password: str):
+        user = (user_login, self._hash_password(password), self.id_generator(40), str(datetime.now().date()))
+        query = "SELECT * FROM users WHERE userLogin = ?"
+        print(self.in_db(user_login))
+        print(self._cur.execute(query, (user_login,)).fetchone())
+        query = "INSERT INTO users VALUES(?, ?, ?, ?);"
+        if not self.in_db(user_login):
             self._cur.execute(query, user)
             self._con.commit()
             return True
 
         return False
 
-    def in_db(self, userlogin: str):
-        query = 'SELECT * FROM users WHERE userlogin = ?'
-        if self._cur.execute(query, (userlogin, )).fetchone() is None:
+    def get_session(self, user_login: str):
+        print("gs", user_login)
+        query = 'SELECT session FROM users WHERE userlogin = ?'
+        return self._cur.execute(query, (user_login,)).fetchone()[0]
+
+    def in_db(self, user_login: str):
+        query = 'SELECT * FROM users WHERE userLogin = ?'
+        if self._cur.execute(query, (user_login,)).fetchone() is None:
             return False
 
         return True
 
-    def get_user(self, userlogin: str):
-        query = 'SELECT * FROM users WHERE userlogin = ? LIMIT 1'
-        return self._cur.execute(query, (userlogin, )).fetchone()
+    def refresh_session(self, user_login: str):
+        query = 'UPDATE users SET session = ?, sessionCreated = ? WHERE userLogin = ?'
+        self._cur.execute(query, (self.id_generator(40), str(datetime.now().date()), user_login))
+        self._con.commit()
 
-    def check_password(self, userlogin: str, password: str):
-        query = "SELECT * FROM users WHERE userlogin = ?"
-        if self.in_db(userlogin):
-            _passw = self._cur.execute(query, (userlogin, )).fetchone()[1]
+
+    def get_user(self, session: str):
+        query = 'SELECT * FROM users WHERE session = ? LIMIT 1'
+        return self._cur.execute(query, (session,)).fetchone()
+
+    def check_password(self, user_login: str, password: str):
+        query = "SELECT * FROM users WHERE userLogin = ?"
+        if self.in_db(user_login):
+            _passw = self._cur.execute(query, (user_login,)).fetchone()[1]
             return bcrypt.checkpw(password.encode('utf-8'), _passw.encode('utf-8'))
 
     def recreate_table(self):
@@ -85,7 +104,7 @@ class BerestaDatabase:
 
     def change_userlogin(self, userlogin_old: str, userlogin_new: str, password: str):
         if self.check_password(userlogin_old, password):
-            update_query = "UPDATE users SET userlogin = ? WHERE userlogin = ? AND password = ?"
+            update_query = "UPDATE users SET userLogin = ? WHERE userLogin = ? AND password = ?"
             self._cur.execute(update_query, (userlogin_new, userlogin_old, self._hash_password(password)))
             self._con.commit()
             return True
@@ -94,8 +113,9 @@ class BerestaDatabase:
 
     def change_password(self, userlogin: str, password_new: str, password_old: str):
         if self.check_password(userlogin, password_old):
-            update_query = "UPDATE users SET password = ? WHERE userlogin = ? AND password = ?"
-            self._cur.execute(update_query, (self._hash_password(password_new), userlogin, self._hash_password(password_old)))
+            update_query = "UPDATE users SET password = ? WHERE userLogin = ? AND password = ?"
+            self._cur.execute(update_query,
+                              (self._hash_password(password_new), userlogin, self._hash_password(password_old)))
             self._con.commit()
             return True
 

@@ -10,7 +10,6 @@ if __name__ == "__main__":
 
     filePath = Path("databases" + os.sep + "beresta_data.db")
     filePath.touch(exist_ok=True)
-    print("db", filePath)
 
     db.recreate_table()
 
