@@ -21,7 +21,6 @@ def setcookie():
             resp = make_response()
             resp.set_cookie('logged', 'yes', 1296000)
             redirect("/main_page")
-            redirect("/main_page")
             return resp
         else:
             return redirect('/register')
