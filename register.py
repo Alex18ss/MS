@@ -6,6 +6,27 @@ app = Flask(__name__)
 # создали фласк приложение(веб-сервер)
 
 
+def remain():
+    if request.cookies.get('logged'):
+        return redirect("/main_page")
+    print("To setcookie -->>")
+    return setcookie()
+
+
+def setcookie():
+    try:
+        if db.in_db(request.form["login"]):
+            res = make_response()
+            res.set_cookie('logged', 'yes', 1296000)
+            print("To main_page -->>")
+            redirect("/main_page")
+            return res
+        else:
+            return redirect('/register')
+    except BadRequestKeyError:
+        return redirect('/register')
+
+
 @app.route("/register")
 def register():
     if request.cookies.get('logged'):
@@ -13,40 +34,31 @@ def register():
     return render_template('register.html')
 
 
-@app.route('/cookie', methods=['GET', 'POST'])
-def setcookie():
-    try:
-        if db.in_db(request.form["login"]):
-            resp = make_response()
-            resp.set_cookie('logged', 'yes', 1296000)
-            redirect("/main_page")
-            return resp
-        else:
-            return redirect('/register')
-    except BadRequestKeyError:
-        return redirect('/register')
-
-
 @app.route('/main_page', methods=['GET', 'POST'])
 def main_page():
+    print("In main page")
     if request.cookies.get('logged'):
+        print("Here 1")
         return render_template('example.html')
     try:
-        if request.form["login"] is None:
-            return redirect('/register')
-        elif not db.in_db(request.form["login"]):
+        if not db.in_db(request.form["login"]):
+            print("Here 2")
             db.insert_user(request.form["login"], request.form["password"])
-            return setcookie()
+            print("To remain -->>")
+            return remain()
         else:
             if db.check_password(request.form["login"], request.form["password"]):
-                return setcookie()
+                print("Here 3")
+                return remain()
             else:
+                print("Here 4")
                 return redirect('/register')
     except BadRequestKeyError:
+        print("Here 5")
         return redirect('/register')
 
 
 if __name__ == '__main__':
-    db = BerestaDatabase("databases/beresta_data.db")
+    db = BerestaDatabase("databases/test.db")
     db.recreate_table()
-    app.run(debug=True, port=12289)
+    app.run(debug=True, port=12289, threaded=True)
