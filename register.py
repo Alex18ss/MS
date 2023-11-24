@@ -5,12 +5,6 @@ from database import *
 app = Flask(__name__) # создали фласк приложение(веб-сервер)
 
 
-def remain():
-    if request.cookies.get('logged'):
-        return redirect("/main_page")
-    return setcookie()
-
-
 def setcookie():
     try:
         if db.in_db(request.form["login"]):
@@ -37,10 +31,10 @@ def main_page():
     try:
         if not db.in_db(request.form["login"]):
             db.insert_user(request.form["login"], request.form["password"])
-            return remain()
+            return setcookie()
         else:
             if db.check_password(request.form["login"], request.form["password"]):
-                return remain()
+                return setcookie()
             else:
                 return redirect('/register')
     except BadRequestKeyError:
