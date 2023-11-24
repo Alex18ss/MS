@@ -17,7 +17,6 @@ def register():
 def setcookie():
     try:
         if db.in_db(request.form["login"]):
-            print("In cookie")
             resp = make_response()
             resp.set_cookie('logged', 'yes', 1296000)
             redirect("/main_page")
@@ -31,7 +30,6 @@ def setcookie():
 @app.route('/main_page', methods=['GET', 'POST'])
 def main_page():
     if request.cookies.get('logged'):
-        print("Here")
         return render_template('example.html')
     try:
         if request.form["login"] is None:
