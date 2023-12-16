@@ -1,12 +1,17 @@
 import sqlite3
 import bcrypt
-
+from datetime import datetime
+import string
+import random
 
 class BerestaDatabase:
 
     _name = ""
     _con = ""
     _cur = ""
+
+    def id_generator(self, size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for _ in range(size))
 
     def __init__(self, name: str):
         self._name = name
@@ -34,21 +39,33 @@ class BerestaDatabase:
     def create_table(self):
         self._cur.execute("""CREATE TABLE IF NOT EXISTS users(
            userlogin TEXT PRIMARY KEY,
-           password TEXT)
+           password TEXT,
+           session TEXT,
+           sessionCreated DATE)
         """)
         self._con.commit()
         return
+
+    def get_session(self, user_login: str):
+        print("gs", user_login)
+        query = 'SELECT session FROM users WHERE userlogin = ?'
+        return self._cur.execute(query, (user_login,)).fetchone()[0]
+
+    def refresh_session(self, user_login: str):
+        query = 'UPDATE users SET session = ?, sessionCreated = ? WHERE userLogin = ?'
+        self._cur.execute(query, (self.id_generator(40), str(datetime.now().date()), user_login))
+        self._con.commit()
 
     def _hash_password(self, password: str):
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         return hashed_password.decode('utf-8')
 
     def insert_user(self, userlogin: str, password: str):
-        user = (userlogin, self._hash_password(password))
+        user = (userlogin, self._hash_password(password), self.id_generator(40), str(datetime.now().date()))
         query = "SELECT * FROM users WHERE userlogin = ?"
         print(self.in_db(userlogin))
         print(self._cur.execute(query, (userlogin, )).fetchone())
-        query = "INSERT INTO users VALUES(?, ?);"
+        query = "INSERT INTO users VALUES(?, ?, ?, ?);"
         if not self.in_db(userlogin):
             self._cur.execute(query, user)
             self._con.commit()
@@ -63,9 +80,9 @@ class BerestaDatabase:
 
         return True
 
-    def get_user(self, userlogin: str):
-        query = 'SELECT * FROM users WHERE userlogin = ? LIMIT 1'
-        return self._cur.execute(query, (userlogin, )).fetchone()
+    def get_user(self, session: str):
+        query = 'SELECT * FROM users WHERE session = ? LIMIT 1'
+        return self._cur.execute(query, (session,)).fetchone()
 
     def check_password(self, userlogin: str, password: str):
         query = "SELECT * FROM users WHERE userlogin = ?"
@@ -106,28 +123,5 @@ class BerestaDatabase:
 
 
 if __name__ == "__main__":
-    print("Database name: ")
-    name = str(input())
-
-    db = BerestaDatabase(name)
-    db.recreate_table()
-
-    print("User login: ")
-    login = input()
-    print("Username: ")
-    username = input()
-    print("Password: ")
-    password = input()
-
-    db.insert_user(login, username, password)
-
-    db.print_db()
-
-    print("New password: ")
-    np = input()
-    print(db.check_password(login, username, np))
-
-    db.change_password(login, username, np, password)
-    db.print_db()
-
-    db.delete_table()
+    db = BerestaDatabase('data_beresta.db')
+    db.create_table()
