@@ -2,9 +2,11 @@ from flask import *  # подключили библиотеку flask
 # from flask_login import *
 from werkzeug.exceptions import BadRequestKeyError
 from database import *
-app = Flask(__name__) # создали фласк приложение(веб-сервер)
+
+app = Flask(__name__)  # создали фласк приложение(веб-сервер)
 
 global session
+
 
 def setcookie(userlogin):
     try:
@@ -21,15 +23,17 @@ def setcookie(userlogin):
 
 @app.route("/register")
 def register():
-    if request.cookies.get('session') and request.cookies.get('session') == session:
+    if db.search_cooky(request.cookies.get('session')):
         return redirect("/main_page")
     return render_template('register.html')
 
 
+@app.route('/')
 @app.route('/main_page', methods=['GET', 'POST'])
 def main_page():
-    if request.cookies.get('session') and request.cookies.get('session') == session:
-        return render_template('example.html')
+    user = db.get_user(request.cookies.get('session'))
+    if db.search_cooky(request.cookies.get('session')):
+        return render_template('example.html', user=user)
     try:
         if not db.in_db(request.form["login"]):
             db.insert_user(request.form["login"], request.form["password"])

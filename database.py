@@ -3,6 +3,7 @@ import bcrypt
 from datetime import datetime
 import string
 import random
+from flask import *
 
 class BerestaDatabase:
 
@@ -56,11 +57,11 @@ class BerestaDatabase:
         self._cur.execute(query, (self.id_generator(40), str(datetime.now().date()), user_login))
         self._con.commit()
 
-    def _hash_password(self, password: str):
+    def _hash_password(self, password: str) -> str:
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         return hashed_password.decode('utf-8')
 
-    def insert_user(self, userlogin: str, password: str):
+    def insert_user(self, userlogin: str, password: str) -> bool:
         user = (userlogin, self._hash_password(password), self.id_generator(40), str(datetime.now().date()))
         query = "SELECT * FROM users WHERE userlogin = ?"
         print(self.in_db(userlogin))
@@ -73,12 +74,19 @@ class BerestaDatabase:
 
         return False
 
-    def in_db(self, userlogin: str):
+    def in_db(self, userlogin: str) -> bool:
         query = 'SELECT * FROM users WHERE userlogin = ?'
         if self._cur.execute(query, (userlogin, )).fetchone() is None:
             return False
 
         return True
+
+    def search_cooky(self, session_key: str) -> bool:
+        query = 'SELECT * FROM users WHERE session = ?'
+        if self._cur.execute(query, (session_key, )).fetchone() is None:
+            return False
+        return True
+
 
     def get_user(self, session: str):
         query = 'SELECT * FROM users WHERE session = ? LIMIT 1'
