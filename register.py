@@ -11,7 +11,8 @@ global session
 def setcookie(userlogin):
     try:
         if db.in_db(request.form["login"]):
-            res = make_response(render_template("example.html"))
+            user = db.get_user_by_login(request.form["login"])
+            res = make_response(render_template("example.html", user=user))
             session = db.get_session(userlogin)
             res.set_cookie('session', session, 1296000)
             return res
@@ -31,7 +32,7 @@ def register():
 @app.route('/')
 @app.route('/main_page', methods=['GET', 'POST'])
 def main_page():
-    user = db.get_user(request.cookies.get('session'))
+    user = db.get_user_by_session(request.cookies.get('session'))
     if db.search_cooky(request.cookies.get('session')):
         return render_template('example.html', user=user)
     try:

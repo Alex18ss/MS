@@ -5,8 +5,8 @@ import string
 import random
 from flask import *
 
-class BerestaDatabase:
 
+class BerestaDatabase:
     _name = ""
     _con = ""
     _cur = ""
@@ -65,7 +65,7 @@ class BerestaDatabase:
         user = (userlogin, self._hash_password(password), self.id_generator(40), str(datetime.now().date()))
         query = "SELECT * FROM users WHERE userlogin = ?"
         print(self.in_db(userlogin))
-        print(self._cur.execute(query, (userlogin, )).fetchone())
+        print(self._cur.execute(query, (userlogin,)).fetchone())
         query = "INSERT INTO users VALUES(?, ?, ?, ?);"
         if not self.in_db(userlogin):
             self._cur.execute(query, user)
@@ -76,26 +76,29 @@ class BerestaDatabase:
 
     def in_db(self, userlogin: str) -> bool:
         query = 'SELECT * FROM users WHERE userlogin = ?'
-        if self._cur.execute(query, (userlogin, )).fetchone() is None:
+        if self._cur.execute(query, (userlogin,)).fetchone() is None:
             return False
 
         return True
 
     def search_cooky(self, session_key: str) -> bool:
         query = 'SELECT * FROM users WHERE session = ?'
-        if self._cur.execute(query, (session_key, )).fetchone() is None:
+        if self._cur.execute(query, (session_key,)).fetchone() is None:
             return False
         return True
 
-
-    def get_user(self, session: str):
+    def get_user_by_session(self, session: str) -> str:
         query = 'SELECT * FROM users WHERE session = ? LIMIT 1'
         return self._cur.execute(query, (session,)).fetchone()
+
+    def get_user_by_login(self, login: str) -> str:
+        query = 'SELECT * FROM users WHERE userlogin = ? LIMIT 1'
+        return self._cur.execute(query, (login,)).fetchone()
 
     def check_password(self, userlogin: str, password: str):
         query = "SELECT * FROM users WHERE userlogin = ?"
         if self.in_db(userlogin):
-            _passw = self._cur.execute(query, (userlogin, )).fetchone()[1]
+            _passw = self._cur.execute(query, (userlogin,)).fetchone()[1]
             return bcrypt.checkpw(password.encode('utf-8'), _passw.encode('utf-8'))
 
     def recreate_table(self):
@@ -120,7 +123,8 @@ class BerestaDatabase:
     def change_password(self, userlogin: str, password_new: str, password_old: str):
         if self.check_password(userlogin, password_old):
             update_query = "UPDATE users SET password = ? WHERE userlogin = ? AND password = ?"
-            self._cur.execute(update_query, (self._hash_password(password_new), userlogin, self._hash_password(password_old)))
+            self._cur.execute(update_query,
+                              (self._hash_password(password_new), userlogin, self._hash_password(password_old)))
             self._con.commit()
             return True
 
